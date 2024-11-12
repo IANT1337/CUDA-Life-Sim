@@ -1,0 +1,13 @@
+{
+  "screen_width": 1000,
+  "screen_height": 1000,
+  "num_preys": 10000,
+  "num_predators": 50,
+  "num_organics": 1,
+  "prey_speed": 2,
+  "predator_speed": 2,
+  "prey_vision_range": 60,
+  "predator_vision_range": 50,
+  "prey_energy": 500,
+  "predator_energy": 500
+}
