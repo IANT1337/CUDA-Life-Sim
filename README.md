@@ -33,3 +33,9 @@ This project simulates a prey vs predator environment using CUDA for parallel pr
   - `utils/`: Contains utility functions.
 - `requirements.txt`: Lists the required dependencies.
 - `README.md`: Project documentation.
+
+
+## Screenshots
+
+   ![Simulation Screenshot](images/image1.png)
+   ```
