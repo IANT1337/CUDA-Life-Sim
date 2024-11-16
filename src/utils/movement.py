@@ -7,11 +7,14 @@ def calculate_new_position(current_position, target_position, speed, screen_widt
     if direction == 2:  # Random wandering
         random_angle = xoroshiro128p_uniform_float32(rng_states, idx) * 2 * math.pi
         random_distance = xoroshiro128p_uniform_float32(rng_states, idx) * vision_range
-        target_position[0] = current_position[0] + random_distance * math.cos(random_angle)
-        target_position[1] = current_position[1] + random_distance * math.sin(random_angle)
+        wander_target_x = current_position[0] + random_distance * math.cos(random_angle)
+        wander_target_y = current_position[1] + random_distance * math.sin(random_angle)
+        direction_x = wander_target_x - current_position[0]
+        direction_y = wander_target_y - current_position[1]
+    else:
+        direction_x = target_position[0] - current_position[0]
+        direction_y = target_position[1] - current_position[1]
 
-    direction_x = target_position[0] - current_position[0]
-    direction_y = target_position[1] - current_position[1]
     norm = (direction_x ** 2 + direction_y ** 2) ** 0.5
     if norm > 0:
         direction_x /= norm
@@ -21,8 +24,17 @@ def calculate_new_position(current_position, target_position, speed, screen_widt
         direction_x = -direction_x
         direction_y = -direction_y
     
+    # Calculate the new position
     new_x = current_position[0] + direction_x * speed
     new_y = current_position[1] + direction_y * speed
+
+    # Check if the new position overshoots the target
+    if direction != 2:  # Only check for overshooting when not wandering
+        dist_to_target = ((new_x - current_position[0]) ** 2 + (new_y - current_position[1]) ** 2) ** 0.5
+        if dist_to_target > norm:
+            new_x = target_position[0]
+            new_y = target_position[1]
+
     # Apply boundary conditions
     if new_x < 0 or new_x >= screen_width:
         direction_x = -direction_x

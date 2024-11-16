@@ -1,13 +1,27 @@
 {
   "screen_width": 1920,
   "screen_height": 1080,
-  "num_preys": 25000,
-  "num_predators": 50,
-  "num_organics": 1,
-  "prey_speed": 2,
-  "predator_speed": 2,
-  "prey_vision_range": 60,
-  "predator_vision_range": 50,
-  "prey_energy": 500,
-  "predator_energy": 500
+  "num_organics": 100,
+  "cells": [
+    {
+      "name": "prey",
+      "num_cells": 25000,
+      "speed": 2,
+      "vision_range": 60,
+      "energy": 500,
+      "max_energy": 1000,
+      "is_carnivore": false,
+      "color": [0, 255, 0]
+    },
+    {
+      "name": "predator",
+      "num_cells": 50,
+      "speed": 2,
+      "vision_range": 50,
+      "energy": 500,
+      "max_energy": 1000,
+      "is_carnivore": true,
+      "color": [255, 0, 0]
+    }
+  ]
 }

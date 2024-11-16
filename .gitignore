@@ -1,0 +1,18 @@
+# Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore __pycache__ directories
+src/simulation/__pycache__/
+src/utils/__pycache__/
+
+# Ignore other files and directories
+*.log
+*.tmp
+*.bak
+*.swp
+.DS_Store
+.env
+.vscode/
+.idea/
