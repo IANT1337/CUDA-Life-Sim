@@ -1,7 +1,7 @@
 import cupy as cp
 from utils.random_points import generate_random_points_in_circle
-import math
 import pygame
+
 class Organic:
     def __init__(self, config):
         self.positions = cp.random.randint(0, config['screen_width'], (config['num_organics'], 2))

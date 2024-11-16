@@ -1,8 +1,12 @@
 import cupy as cp
-from numba import cuda
+from numba import cuda, float32
 from numba.cuda.random import xoroshiro128p_uniform_float32
 import math
 import pygame
+from utils.movement import calculate_new_position
+
+from utils.movement import calculate_new_position
+
 class Predator:
     def __init__(self, config):
         self.positions = cp.stack((
@@ -59,35 +63,19 @@ class Predator:
                     nearest_prey_idx = j
             # Move towards prey if one is within range
             if nearest_prey_idx != -1:
-                direction_x = prey_positions[nearest_prey_idx, 0] - predator_positions[idx, 0]
-                direction_y = prey_positions[nearest_prey_idx, 1] - predator_positions[idx, 1]
-                norm = (direction_x ** 2 + direction_y ** 2) ** 0.5
-                if norm > 0:
-                    direction_x /= norm
-                    direction_y /= norm
-                new_x = predator_positions[idx, 0] + direction_x * predator_speed
-                new_y = predator_positions[idx, 1] + direction_y * predator_speed
+                new_x, new_y = calculate_new_position(predator_positions[idx], prey_positions[nearest_prey_idx], predator_speed, screen_width, screen_height, 1)
             else:
-                # Random wandering if no prey in range
+                # Random wandering if no predators or organics are nearby
                 random_angle = xoroshiro128p_uniform_float32(rng_states, idx) * 2 * math.pi
                 random_distance = xoroshiro128p_uniform_float32(rng_states, idx) * predator_vision_range
                 target_x = predator_positions[idx, 0] + random_distance * math.cos(random_angle)
                 target_y = predator_positions[idx, 1] + random_distance * math.sin(random_angle)
-                direction_x = target_x - predator_positions[idx, 0]
-                direction_y = target_y - predator_positions[idx, 1]
-                norm = (direction_x ** 2 + direction_y ** 2) ** 0.5
-                if norm > 0:
-                    direction_x /= norm
-                    direction_y /= norm
-                new_x = predator_positions[idx, 0] + direction_x * predator_speed
-                new_y = predator_positions[idx, 1] + direction_y * predator_speed
-            # Apply boundary conditions
-            if new_x < 0 or new_x >= screen_width:
-                direction_x = -direction_x
-            if new_y < 0 or new_y >= screen_height:
-                direction_y = -direction_y
-            predator_positions[idx, 0] = max(0, min(new_x, screen_width - 1))
-            predator_positions[idx, 1] = max(0, min(new_y, screen_height - 1))
+                target_position = cuda.local.array(2, dtype=float32)
+                target_position[0] = target_x
+                target_position[1] = target_y
+                new_x, new_y = calculate_new_position(prey_positions[idx], target_position, predator_speed, screen_width, screen_height, 1)
+            predator_positions[idx, 0] = new_x
+            predator_positions[idx, 1] = new_y
             # Consume prey if within range
             if nearest_prey_idx != -1 and min_dist < 3:
                 predator_energy[idx] += predator_energy_gain

@@ -1,9 +1,10 @@
 import cupy as cp
-from numba import cuda
+from numba import cuda, float32
 from numba.cuda.random import xoroshiro128p_uniform_float32
-from numba.cuda.random import create_xoroshiro128p_states, xoroshiro128p_uniform_float32
 import math
 import pygame
+from utils.movement import calculate_new_position
+
 class Prey:
     def __init__(self, config):
         self.positions = cp.stack((
@@ -60,14 +61,7 @@ class Prey:
                         nearest_predator_idx = j
             # If a predator is nearby, run away
             if nearest_predator_idx != -1:
-                direction_x = prey_positions[idx, 0] - predator_positions[nearest_predator_idx, 0]
-                direction_y = prey_positions[idx, 1] - predator_positions[nearest_predator_idx, 1]
-                norm = (direction_x ** 2 + direction_y ** 2) ** 0.5
-                if norm > 0:
-                    direction_x /= norm
-                    direction_y /= norm
-                new_x = prey_positions[idx, 0] + direction_x * prey_speed
-                new_y = prey_positions[idx, 1] + direction_y * prey_speed
+                new_x, new_y = calculate_new_position(prey_positions[idx], predator_positions[nearest_predator_idx], prey_speed, screen_width, screen_height, 0)
             else:
                 # If no predator is nearby, search for the nearest organic within vision range
                 nearest_organic_idx = -1
@@ -81,35 +75,20 @@ class Prey:
                         nearest_organic_idx = j
                 # Move toward the nearest organic if one is in range
                 if nearest_organic_idx != -1:
-                    direction_x = organic_positions[nearest_organic_idx, 0] - prey_positions[idx, 0]
-                    direction_y = organic_positions[nearest_organic_idx, 1] - prey_positions[idx, 1]
-                    norm = (direction_x ** 2 + direction_y ** 2) ** 0.5
-                    if norm > 0:
-                        direction_x /= norm
-                        direction_y /= norm
-                    new_x = prey_positions[idx, 0] + direction_x * prey_speed
-                    new_y = prey_positions[idx, 1] + direction_y * prey_speed
+                    new_x, new_y = calculate_new_position(prey_positions[idx], organic_positions[nearest_organic_idx], prey_speed, screen_width, screen_height, 1)
                 else:
                     # Random wandering if no predators or organics are nearby
                     random_angle = xoroshiro128p_uniform_float32(rng_states, idx) * 2 * math.pi
                     random_distance = xoroshiro128p_uniform_float32(rng_states, idx) * prey_vision_range
                     target_x = prey_positions[idx, 0] + random_distance * math.cos(random_angle)
                     target_y = prey_positions[idx, 1] + random_distance * math.sin(random_angle)
-                    direction_x = target_x - prey_positions[idx, 0]
-                    direction_y = target_y - prey_positions[idx, 1]
-                    norm = (direction_x ** 2 + direction_y ** 2) ** 0.5
-                    if norm > 0:
-                        direction_x /= norm
-                        direction_y /= norm
-                    new_x = prey_positions[idx, 0] + direction_x * prey_speed
-                    new_y = prey_positions[idx, 1] + direction_y * prey_speed
-            # Apply boundary conditions
-            if new_x < 0 or new_x >= screen_width:
-                direction_x = -direction_x
-            if new_y < 0 or new_y >= screen_height:
-                direction_y = -direction_y
-            prey_positions[idx, 0] = max(0, min(new_x, screen_width - 1))
-            prey_positions[idx, 1] = max(0, min(new_y, screen_height - 1))
+                    target_position = cuda.local.array(2, dtype=float32)
+                    target_position[0] = target_x
+                    target_position[1] = target_y
+                    new_x, new_y = calculate_new_position(prey_positions[idx], target_position, prey_speed, screen_width, screen_height, 1)
+            
+            prey_positions[idx, 0] = new_x
+            prey_positions[idx, 1] = new_y
             # Consume organic if within range
             if nearest_organic_idx != -1 and min_dist_to_organic < 2:
                 prey_energy[idx] += prey_energy_gain
@@ -117,8 +96,10 @@ class Prey:
                 organic_positions[nearest_organic_idx, 1] = -1
             pass
         cuda.syncthreads()
+
     def update_positions(self, blocks_per_grid, threads_per_block, *args):
         Prey.update_positions_kernel[blocks_per_grid, threads_per_block](*args)
+
     def render(self, screen):
         prey_positions_host = cp.asnumpy(self.positions)
         prey_positions_host = prey_positions_host[prey_positions_host[:, 0] != -1]
