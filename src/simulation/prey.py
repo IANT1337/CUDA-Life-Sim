@@ -61,7 +61,7 @@ class Prey:
                         nearest_predator_idx = j
             # If a predator is nearby, run away
             if nearest_predator_idx != -1:
-                new_x, new_y = calculate_new_position(prey_positions[idx], predator_positions[nearest_predator_idx], prey_speed, screen_width, screen_height, 0)
+                new_x, new_y = calculate_new_position(prey_positions[idx], predator_positions[nearest_predator_idx], prey_speed, screen_width, screen_height, 0,rng_states, idx, prey_vision_range)
             else:
                 # If no predator is nearby, search for the nearest organic within vision range
                 nearest_organic_idx = -1
@@ -75,18 +75,12 @@ class Prey:
                         nearest_organic_idx = j
                 # Move toward the nearest organic if one is in range
                 if nearest_organic_idx != -1:
-                    new_x, new_y = calculate_new_position(prey_positions[idx], organic_positions[nearest_organic_idx], prey_speed, screen_width, screen_height, 1)
+                    new_x, new_y = calculate_new_position(prey_positions[idx], organic_positions[nearest_organic_idx], prey_speed, screen_width, screen_height, 1,rng_states, idx, prey_vision_range)
                 else:
                     # Random wandering if no predators or organics are nearby
-                    random_angle = xoroshiro128p_uniform_float32(rng_states, idx) * 2 * math.pi
-                    random_distance = xoroshiro128p_uniform_float32(rng_states, idx) * prey_vision_range
-                    target_x = prey_positions[idx, 0] + random_distance * math.cos(random_angle)
-                    target_y = prey_positions[idx, 1] + random_distance * math.sin(random_angle)
-                    target_position = cuda.local.array(2, dtype=float32)
-                    target_position[0] = target_x
-                    target_position[1] = target_y
-                    new_x, new_y = calculate_new_position(prey_positions[idx], target_position, prey_speed, screen_width, screen_height, 1)
-            
+                    new_x, new_y = calculate_new_position(
+                        prey_positions[idx], prey_positions[idx], prey_speed, screen_width, screen_height, 2, rng_states, idx, prey_vision_range
+                    )           
             prey_positions[idx, 0] = new_x
             prey_positions[idx, 1] = new_y
             # Consume organic if within range
